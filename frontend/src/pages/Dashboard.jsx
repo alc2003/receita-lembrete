@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api/client.js";
 import { doseTimesInRange } from "../scheduleUtils.js";
+import { useTimezone } from "../TimezoneContext.jsx";
+import { formatInOffset } from "../timezone.js";
 
 function upcomingDoses(med, count = 3) {
   const now = new Date();
@@ -9,11 +11,8 @@ function upcomingDoses(med, count = 3) {
   return doseTimesInRange(med, now, farFuture).slice(0, count);
 }
 
-function formatDose(date) {
-  return date.toLocaleString("pt-BR", { weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
-}
-
 export default function Dashboard() {
+  const { offset } = useTimezone();
   const [medications, setMedications] = useState(null);
 
   function reload() {
@@ -62,7 +61,9 @@ export default function Dashboard() {
               <div className="agenda">
                 <strong>Próximas doses:</strong>
                 <ul>
-                  {doses.map((d, i) => <li key={i}>{formatDose(d)}</li>)}
+                  {doses.map((d, i) => (
+                    <li key={i}>{formatInOffset(d.toISOString(), { weekday: true, day: true, hour: true }, offset)}</li>
+                  ))}
                 </ul>
               </div>
             ) : (

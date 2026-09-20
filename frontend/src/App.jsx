@@ -10,9 +10,12 @@ import Prescriptions from "./pages/Prescriptions.jsx";
 import PrescriptionDetail from "./pages/PrescriptionDetail.jsx";
 import { api } from "./api/client.js";
 import { enablePushNotifications } from "./push.js";
+import { useTimezone } from "./TimezoneContext.jsx";
+import { BR_TIMEZONES } from "./timezone.js";
 
 export default function App() {
   const [user, setUser] = useState(undefined); // undefined = loading, null = logged out
+  const { offset, setOffset } = useTimezone();
 
   useEffect(() => {
     if (!localStorage.getItem("token")) {
@@ -57,6 +60,16 @@ export default function App() {
           <Link to="/calendar">📅 Agenda</Link>
           <Link to="/prescriptions">📄 Receitas</Link>
           <Link to="/upload">Nova receita</Link>
+          <select
+            className="tz-select"
+            value={offset}
+            onChange={(e) => setOffset(Number(e.target.value))}
+            title="Fuso horário usado para mostrar e agendar os horários"
+          >
+            {BR_TIMEZONES.map((tz) => (
+              <option key={tz.value} value={tz.value}>{tz.label}</option>
+            ))}
+          </select>
           <span className="user">{user.name || user.username || user.email}</span>
           <button className="link-button" onClick={logout}>Sair</button>
         </nav>

@@ -1,17 +1,16 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api/client.js";
+import { useTimezone } from "../TimezoneContext.jsx";
+import { formatInOffset } from "../timezone.js";
 
 const STATUS_LABEL = {
   uploaded: "Aguardando revisão",
   scheduled: "Agendada",
 };
 
-function formatDate(iso) {
-  return new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
-}
-
 export default function Prescriptions() {
+  const { offset } = useTimezone();
   const [prescriptions, setPrescriptions] = useState(null);
 
   function reload() {
@@ -47,7 +46,7 @@ export default function Prescriptions() {
             <button className="icon-button" title="Excluir" onClick={() => handleDelete(p)}>🗑️</button>
           </div>
           <p className="hint">
-            Enviada em {formatDate(p.created_at)} — <span className={`status-badge status-${p.status}`}>{STATUS_LABEL[p.status] || p.status}</span>
+            Enviada em {formatInOffset(p.created_at, { day: true, year: true, hour: true }, offset)} — <span className={`status-badge status-${p.status}`}>{STATUS_LABEL[p.status] || p.status}</span>
           </p>
 
           {p.medications.length > 0 ? (
@@ -57,7 +56,7 @@ export default function Prescriptions() {
                   <strong>{m.name}</strong>{m.dosage_text ? ` — ${m.dosage_text}` : ""}
                   <br />
                   <span className="hint">
-                    {m.first_dose_at ? `Iniciado em ${formatDate(m.first_dose_at)}` : "Ainda não iniciado"}
+                    {m.first_dose_at ? `Iniciado em ${formatInOffset(m.first_dose_at, { day: true, year: true, hour: true }, offset)}` : "Ainda não iniciado"}
                     {" · "}a cada {m.frequency_hours}h ({m.times_per_day}x ao dia)
                   </span>
                 </li>

@@ -1,17 +1,13 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api } from "../api/client.js";
-
-function nowLocalInput() {
-  const d = new Date();
-  d.setSeconds(0, 0);
-  d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
-  return d.toISOString().slice(0, 16);
-}
+import { useTimezone } from "../TimezoneContext.jsx";
+import { localInputToUTCDate, nowAsLocalInput } from "../timezone.js";
 
 export default function Review() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { offset } = useTimezone();
   const [prescription, setPrescription] = useState(null);
   const [firstDoses, setFirstDoses] = useState({});
   const [error, setError] = useState(null);
@@ -21,7 +17,7 @@ export default function Review() {
     api.getPrescription(id).then((p) => {
       setPrescription(p);
       const defaults = {};
-      p.medications.forEach((m) => (defaults[m.id] = nowLocalInput()));
+      p.medications.forEach((m) => (defaults[m.id] = nowAsLocalInput(offset)));
       setFirstDoses(defaults);
     });
   }, [id]);
@@ -47,7 +43,7 @@ export default function Review() {
     try {
       const payload = {};
       for (const [medId, localDatetime] of Object.entries(firstDoses)) {
-        payload[medId] = new Date(localDatetime).toISOString();
+        payload[medId] = localInputToUTCDate(localDatetime, offset).toISOString();
       }
       await api.schedulePrescription(id, payload);
       navigate("/");
@@ -62,6 +58,7 @@ export default function Review() {
     <div className="page">
       <h2>Revisar receita</h2>
       <p>Confira os dados extraídos e informe o horário em que tomou (ou vai tomar) a primeira dose de cada medicamento.</p>
+      <p className="hint">Fuso horário usado: UTC{offset >= 0 ? "+" : ""}{offset} (pode trocar no menu do topo).</p>
 
       {warnings.length > 0 && (
         <div className="warning-box">

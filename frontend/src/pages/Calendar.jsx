@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../api/client.js";
 import { doseTimesInRange, colorForMedication } from "../scheduleUtils.js";
+import { useTimezone } from "../TimezoneContext.jsx";
+import { dateKeyInOffset, formatInOffset } from "../timezone.js";
 
 const WEEKDAYS = ["D", "S", "T", "Q", "Q", "S", "S"];
 
@@ -14,6 +16,13 @@ function capitalizeFirst(text) {
 
 function sameDay(a, b) {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+}
+
+// Key for a grid cell (a plain calendar day, built from local Y/M/D
+// components - not derived from a UTC instant, so no offset conversion
+// needed here). Must match the format dateKeyInOffset produces.
+function gridDayKey(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
 function monthGridDays(monthStart) {
@@ -30,6 +39,7 @@ function monthGridDays(monthStart) {
 }
 
 export default function CalendarPage() {
+  const { offset } = useTimezone();
   const [medications, setMedications] = useState(null);
   const [monthStart, setMonthStart] = useState(startOfMonth(new Date()));
   const [selectedDay, setSelectedDay] = useState(new Date());
@@ -51,18 +61,18 @@ export default function CalendarPage() {
     const map = new Map();
     for (const med of medications) {
       for (const time of doseTimesInRange(med, rangeStart, rangeEnd)) {
-        const key = time.toDateString();
+        const key = dateKeyInOffset(time.toISOString(), offset);
         if (!map.has(key)) map.set(key, []);
         map.get(key).push({ time, med });
       }
     }
     for (const entries of map.values()) entries.sort((a, b) => a.time - b.time);
     return map;
-  }, [medications, days]);
+  }, [medications, days, offset]);
 
   if (medications === null) return <p>Carregando...</p>;
 
-  const selectedEntries = dosesByDay.get(selectedDay.toDateString()) || [];
+  const selectedEntries = dosesByDay.get(gridDayKey(selectedDay)) || [];
   const today = new Date();
 
   return (
@@ -76,7 +86,7 @@ export default function CalendarPage() {
       <div className="calendar-grid">
         {WEEKDAYS.map((w, i) => <div key={i} className="calendar-weekday">{w}</div>)}
         {days.map((day, i) => {
-          const entries = dosesByDay.get(day.toDateString()) || [];
+          const entries = dosesByDay.get(gridDayKey(day)) || [];
           const inMonth = day.getMonth() === monthStart.getMonth();
           const isSelected = sameDay(day, selectedDay);
           const isToday = sameDay(day, today);
@@ -108,7 +118,7 @@ export default function CalendarPage() {
             {selectedEntries.map((e, i) => (
               <li key={i}>
                 <span className="dose-dot" style={{ background: colorForMedication(e.med.id) }} />
-                <strong>{e.time.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</strong>
+                <strong>{formatInOffset(e.time.toISOString(), { hour: true }, offset)}</strong>
                 {" — "}{e.med.name} {e.med.dosage_text ? `(${e.med.dosage_text})` : ""}
               </li>
             ))}

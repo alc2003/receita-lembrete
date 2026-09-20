@@ -1,16 +1,13 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api } from "../api/client.js";
+import { useTimezone } from "../TimezoneContext.jsx";
+import { formatInOffset } from "../timezone.js";
 
 const STATUS_LABEL = {
   uploaded: "Aguardando revisão",
   scheduled: "Agendada",
 };
-
-function formatDateTime(iso) {
-  if (!iso) return "—";
-  return new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
-}
 
 function Field({ label, value }) {
   return (
@@ -23,6 +20,7 @@ function Field({ label, value }) {
 
 export default function PrescriptionDetail() {
   const { id } = useParams();
+  const { offset } = useTimezone();
   const [prescription, setPrescription] = useState(null);
 
   useEffect(() => {
@@ -30,6 +28,11 @@ export default function PrescriptionDetail() {
   }, [id]);
 
   if (!prescription) return <div className="page">Carregando...</div>;
+
+  function formatDateTime(iso) {
+    if (!iso) return "—";
+    return formatInOffset(iso, { day: true, year: true, hour: true }, offset);
+  }
 
   return (
     <div className="page">
