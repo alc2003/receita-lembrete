@@ -7,6 +7,7 @@ import Review from "./pages/Review.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 import CalendarPage from "./pages/Calendar.jsx";
 import Prescriptions from "./pages/Prescriptions.jsx";
+import PrescriptionDetail from "./pages/PrescriptionDetail.jsx";
 import { api } from "./api/client.js";
 import { enablePushNotifications } from "./push.js";
 
@@ -65,6 +66,7 @@ export default function App() {
           <Route path="/" element={<Dashboard />} />
           <Route path="/calendar" element={<CalendarPage />} />
           <Route path="/prescriptions" element={<Prescriptions />} />
+          <Route path="/prescriptions/:id" element={<PrescriptionDetail />} />
           <Route path="/upload" element={<Upload />} />
           <Route path="/prescriptions/:id/review" element={<Review />} />
           <Route path="*" element={<Navigate to="/" />} />

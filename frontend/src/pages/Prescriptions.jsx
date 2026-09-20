@@ -53,16 +53,26 @@ export default function Prescriptions() {
           {p.medications.length > 0 ? (
             <ul className="med-summary-list">
               {p.medications.map((m) => (
-                <li key={m.id}>{m.name}{m.dosage_text ? ` — ${m.dosage_text}` : ""}</li>
+                <li key={m.id}>
+                  <strong>{m.name}</strong>{m.dosage_text ? ` — ${m.dosage_text}` : ""}
+                  <br />
+                  <span className="hint">
+                    {m.first_dose_at ? `Iniciado em ${formatDate(m.first_dose_at)}` : "Ainda não iniciado"}
+                    {" · "}a cada {m.frequency_hours}h ({m.times_per_day}x ao dia)
+                  </span>
+                </li>
               ))}
             </ul>
           ) : (
             <p className="hint">Nenhum medicamento identificado.</p>
           )}
 
-          {p.status === "uploaded" && (
-            <Link className="button secondary" to={`/prescriptions/${p.id}/review`}>Continuar revisão</Link>
-          )}
+          <div className="row">
+            <Link className="button secondary" to={`/prescriptions/${p.id}`}>Ver detalhes</Link>
+            {p.status === "uploaded" && (
+              <Link className="button secondary" to={`/prescriptions/${p.id}/review`}>Continuar revisão</Link>
+            )}
+          </div>
         </div>
       ))}
     </div>

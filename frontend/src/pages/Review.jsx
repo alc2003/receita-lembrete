@@ -159,7 +159,7 @@ export default function Review() {
       ))}
 
       <button className="button" disabled={saving} onClick={handleConfirm}>
-        {saving ? "Criando lembretes..." : "Confirmar e criar lembretes no Google Calendar"}
+        {saving ? "Criando lembretes..." : "Confirmar e agendar lembretes"}
       </button>
     </div>
   );
