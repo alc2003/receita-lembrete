@@ -25,3 +25,9 @@ services:
         generateValue: true
       - key: REFILL_REMINDER_DAYS_BEFORE
         value: "4"
+      - key: VAPID_PUBLIC_KEY
+        sync: false
+      - key: VAPID_PRIVATE_KEY_PEM
+        sync: false
+      - key: VAPID_SUBJECT
+        sync: false

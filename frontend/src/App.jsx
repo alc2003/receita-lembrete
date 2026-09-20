@@ -6,6 +6,7 @@ import Upload from "./pages/Upload.jsx";
 import Review from "./pages/Review.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 import { api } from "./api/client.js";
+import { enablePushNotifications } from "./push.js";
 
 export default function App() {
   const [user, setUser] = useState(undefined); // undefined = loading, null = logged out
@@ -21,13 +22,26 @@ export default function App() {
     });
   }, []);
 
+  useEffect(() => {
+    if (user && user.auth_provider === "local") {
+      enablePushNotifications().catch(() => {
+        // best-effort - user may decline the browser permission prompt
+      });
+    }
+  }, [user]);
+
+  function logout() {
+    localStorage.removeItem("token");
+    setUser(null);
+  }
+
   if (user === undefined) return <div className="page">Carregando...</div>;
 
   if (!user) {
     return (
       <Routes>
         <Route path="/auth/callback" element={<AuthCallback onLogin={setUser} />} />
-        <Route path="*" element={<Login />} />
+        <Route path="*" element={<Login onLogin={setUser} />} />
       </Routes>
     );
   }
@@ -38,7 +52,8 @@ export default function App() {
         <Link to="/" className="brand">💊 Receita Lembrete</Link>
         <nav>
           <Link to="/upload">Nova receita</Link>
-          <span className="user">{user.name || user.email}</span>
+          <span className="user">{user.name || user.username || user.email}</span>
+          <button className="link-button" onClick={logout}>Sair</button>
         </nav>
       </header>
       <main className="page">

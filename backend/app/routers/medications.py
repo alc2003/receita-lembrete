@@ -58,9 +58,11 @@ def take_dose(
         if stock_days is not None:
             new_end_date = (dt.date.today() + dt.timedelta(days=stock_days)).isoformat()
             medication.end_date = dt.date.fromisoformat(new_end_date)
-            medication.refill_event_id = calendar_service.create_or_update_refill_event(
-                user, medication, existing_event_id=medication.refill_event_id
-            )
+            medication.refill_notified = False
+            if user.auth_provider == "google":
+                medication.refill_event_id = calendar_service.create_or_update_refill_event(
+                    user, medication, existing_event_id=medication.refill_event_id
+                )
 
     db.commit()
     db.refresh(medication)

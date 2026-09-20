@@ -12,16 +12,45 @@ class User(Base):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True)
-    google_id = Column(String, unique=True, index=True, nullable=False)
-    email = Column(String, unique=True, index=True, nullable=False)
+
+    # "google" (OAuth, reminders go to Google Calendar) or "local"
+    # (email+password, reminders are sent as web push notifications).
+    auth_provider = Column(String, nullable=False, default="google")
+
+    google_id = Column(String, unique=True, index=True, nullable=True)
+    email = Column(String, unique=True, index=True, nullable=True)
+    # Only set for auth_provider == "local" - that flow logs in with a
+    # username instead of an email address.
+    username = Column(String, unique=True, index=True, nullable=True)
     name = Column(String, nullable=True)
     # OAuth refresh token used to create/update Calendar events without
     # asking the user to log in again. Treat this column as a secret.
     google_refresh_token = Column(Text, nullable=True)
     google_calendar_id = Column(String, default="primary")
+
+    # Only set for auth_provider == "local". Treat this column as a secret.
+    password_hash = Column(String, nullable=True)
+
     created_at = Column(DateTime, default=dt.datetime.utcnow)
 
     prescriptions = relationship("Prescription", back_populates="user")
+    push_subscriptions = relationship("PushSubscription", back_populates="user", cascade="all, delete-orphan")
+
+
+class PushSubscription(Base):
+    """A browser's Web Push registration (from PushManager.subscribe()),
+    used to notify auth_provider="local" users about doses directly instead
+    of through Google Calendar."""
+    __tablename__ = "push_subscriptions"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    endpoint = Column(Text, unique=True, nullable=False)
+    p256dh = Column(String, nullable=False)
+    auth_key = Column(String, nullable=False)
+    created_at = Column(DateTime, default=dt.datetime.utcnow)
+
+    user = relationship("User", back_populates="push_subscriptions")
 
 
 class Prescription(Base):
@@ -56,11 +85,19 @@ class Medication(Base):
     total_quantity = Column(Integer, nullable=True)  # units in the box/prescription (e.g. 30 comprimidos)
     quantity_remaining = Column(Integer, nullable=True)
 
-    first_dose_at = Column(DateTime, nullable=True)
+    # Timezone-aware so the push scheduler can compare against utcnow()
+    # without ambiguity, regardless of which DB backend stores it.
+    first_dose_at = Column(DateTime(timezone=True), nullable=True)
     end_date = Column(Date, nullable=True)  # computed: last day the medication is taken / stock lasts
 
-    calendar_event_ids = Column(JSON, default=list)  # one recurring event id per time-of-day slot
-    refill_event_id = Column(String, nullable=True)  # one-off "comprar/renovar" reminder
+    calendar_event_ids = Column(JSON, default=list)  # one recurring event id per time-of-day slot (Google flow)
+    refill_event_id = Column(String, nullable=True)  # one-off "comprar/renovar" reminder (Google flow)
+
+    # Bookkeeping for the push-notification flow (auth_provider == "local"):
+    # which dose slot instant was last notified, so the scheduler tick
+    # doesn't send the same reminder twice.
+    last_reminder_sent_at = Column(DateTime(timezone=True), nullable=True)
+    refill_notified = Column(Boolean, default=False)
 
     created_at = Column(DateTime, default=dt.datetime.utcnow)
 

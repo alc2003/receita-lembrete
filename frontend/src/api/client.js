@@ -18,6 +18,30 @@ export const api = {
 
   me: () => fetch(`${API_URL}/auth/me`, { headers: authHeaders() }).then(handle),
 
+  register: (username, password, name) =>
+    fetch(`${API_URL}/auth/register`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password, name }),
+    }).then(handle),
+
+  login: (username, password) =>
+    fetch(`${API_URL}/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password }),
+    }).then(handle),
+
+  getVapidPublicKey: () =>
+    fetch(`${API_URL}/push/vapid-public-key`).then(handle),
+
+  subscribePush: (subscription) =>
+    fetch(`${API_URL}/push/subscribe`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify(subscription),
+    }).then(handle),
+
   uploadPrescription: (file) => {
     const form = new FormData();
     form.append("file", file);

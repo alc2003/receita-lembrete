@@ -66,3 +66,24 @@ class ScheduleRequest(BaseModel):
 
 class TakeDoseRequest(BaseModel):
     taken_at: Optional[dt.datetime] = None
+
+
+class RegisterRequest(BaseModel):
+    username: str
+    password: str
+    name: Optional[str] = None
+
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+
+class PushSubscriptionKeys(BaseModel):
+    p256dh: str
+    auth: str
+
+
+class PushSubscriptionIn(BaseModel):
+    endpoint: str
+    keys: PushSubscriptionKeys

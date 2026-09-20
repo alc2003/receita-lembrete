@@ -1,13 +1,23 @@
 # Receita Lembrete
 
 Sistema que lê uma foto/PDF de receita médica, extrai os medicamentos com IA
-e cria lembretes recorrentes no Google Calendar a partir do horário da
-primeira dose. Também acompanha o estoque (quantidade de comprimidos) e cria
-um lembrete de "comprar/renovar" antes de acabar — útil para medicamentos de
-uso contínuo/mensal.
+e cria lembretes recorrentes a partir do horário da primeira dose. Também
+acompanha o estoque (quantidade de comprimidos) e avisa antes de acabar —
+útil para medicamentos de uso contínuo/mensal.
 
 - `backend/` — API em FastAPI (Python)
 - `frontend/` — Web app em React (PWA), também usado para gerar o app Android
+
+## Duas formas de login (e de lembrete)
+
+| | Login com Google | Login com usuário e senha |
+|---|---|---|
+| Cadastro | Automático no primeiro login | Tela de "Criar conta" no app |
+| Lembretes viram | Eventos recorrentes no Google Calendar | Notificações push do navegador/app |
+| Exige | Autorizar acesso ao Google Calendar | Nada além de usuário/senha |
+
+Um usuário `teofilo` / senha `1234567` já vem cadastrado (conta local, sem
+Google) para testar o fluxo de notificação sem precisar criar conta.
 
 ## 1. Pré-requisitos (contas gratuitas)
 
@@ -27,6 +37,19 @@ você pode fazer (login, aceitar termos, criar credenciais):
      adicione: `http://localhost:8000/auth/google/callback` (e depois a URL
      do backend em produção).
    - Copie o **Client ID** e **Client Secret**.
+3. **Chaves VAPID (Web Push)** — necessárias só para o login local notificar
+   por push. Gere um par com:
+   ```bash
+   docker run --rm python:3.12-slim bash -c "pip install -q cryptography && python3 -c \"
+   from cryptography.hazmat.primitives.asymmetric import ec
+   from cryptography.hazmat.primitives import serialization
+   import base64
+   k = ec.generate_private_key(ec.SECP256R1())
+   print('VAPID_PUBLIC_KEY=' + base64.urlsafe_b64encode(k.public_key().public_bytes(serialization.Encoding.X962, serialization.PublicFormat.UncompressedPoint)).rstrip(b'=').decode())
+   print('VAPID_PRIVATE_KEY_PEM=' + k.private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8, serialization.NoEncryption()).decode().replace(chr(10), '\\\\n'))
+   \""
+   ```
+   Copia as duas linhas de saída para o `backend/.env` (veja `.env.example`).
 
 ## 2. Rodando localmente
 
@@ -133,6 +156,9 @@ git push -u origin main
      criar o serviço, na URL exibida no topo da página)
    - `FRONTEND_ORIGIN`: preencha depois de criar o Vercel (passo 3.4) e
      redeploy
+   - `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY_PEM` / `VAPID_SUBJECT`: os
+     mesmos valores gerados na seção 1, passo 3 (cole o PEM inteiro, com os
+     `\n` literais, numa linha só)
    - `SECRET_KEY` já é gerado automaticamente pelo Render
 3. Deploy. Teste `https://SEU-BACKEND.onrender.com/health` — deve responder
    `{"status":"ok"}`.
@@ -166,8 +192,15 @@ No mesmo projeto usado nos passos 1-7 da seção 1:
 ### Limitação do free tier
 
 O Render free "dorme" depois de ~15 minutos sem uso — a primeira requisição
-depois disso demora ~30-50s para acordar (normal, não é erro). Aceitável
-para testes; para uso real considere um plano pago para não dormir.
+depois disso demora ~30-50s para acordar (normal, não é erro). Para o login
+com Google isso só afeta a resposta demorar; **para o login local/push é
+mais sério**: o agendador de notificações só roda enquanto o processo está
+acordado, então lembretes marcados para quando o servidor está dormindo não
+disparam (ele não "enfileira e dispara depois", simplesmente perde o tick).
+Mitigação gratuita: um serviço de ping externo (ex. cron-job.org,
+UptimeRobot — contas gratuitas, você mesmo cria) batendo em `/health` a
+cada 10 minutos mantém o Render acordado. Para uso real, um plano pago
+sem sleep é o correto.
 
 ## 4. Gerando o app Android (mesmo código do site)
 
@@ -207,6 +240,13 @@ instalado (gratuito).
 6. Ao marcar "tomei agora" no app, o estoque é decrementado e a data desse
    lembrete de reposição é recalculada.
 
+**Para contas locais (usuário/senha)**, os passos 1-2 são iguais, mas o
+passo 3 em diante muda: não há eventos de Calendar. Em vez disso, um
+processo em background no backend confere a cada minuto se algum
+medicamento tem uma dose vencendo agora e, se tiver, envia uma notificação
+push para o navegador (via Web Push/VAPID) — a mesma lógica de horários e
+de estoque, só que a "entrega" é uma notificação em vez de um evento.
+
 ## Limitações conhecidas (MVP)
 
 - A leitura da receita depende da qualidade da foto e da caligrafia; sempre
@@ -216,3 +256,7 @@ instalado (gratuito).
   no app, e não do calendário.
 - Um usuário só tem uma conta Google conectada por vez (campo
   `google_calendar_id`, padrão "primary").
+- Não há Alembic (ferramenta de migração de banco); `app/migrate.py` faz um
+  ajuste mínimo e automático do esquema na inicialização, suficiente para
+  este estágio do projeto mas não para mudanças maiores no futuro.
+- O login local não tem "esqueci minha senha" nem recuperação de conta.

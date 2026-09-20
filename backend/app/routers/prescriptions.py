@@ -91,7 +91,8 @@ def schedule_prescription(
     db: Session = Depends(get_db),
 ):
     prescription = _get_owned_prescription(prescription_id, user, db)
-    if not user.google_refresh_token:
+    use_calendar = user.auth_provider == "google"
+    if use_calendar and not user.google_refresh_token:
         raise HTTPException(400, "Conecte sua conta Google antes de agendar (faça login novamente)")
 
     for medication in prescription.medications:
@@ -100,13 +101,18 @@ def schedule_prescription(
             continue  # medication removed/skipped by the user during review
 
         schedule_service.compute_schedule(medication, first_dose_at)
+        # reset push-reminder bookkeeping so a reschedule doesn't inherit
+        # dedup state from the previous schedule
+        medication.last_reminder_sent_at = None
+        medication.refill_notified = False
 
-        if medication.calendar_event_ids:
-            calendar_service.delete_events(user, medication.calendar_event_ids)
-        medication.calendar_event_ids = calendar_service.create_dose_events(user, medication)
-        medication.refill_event_id = calendar_service.create_or_update_refill_event(
-            user, medication, existing_event_id=medication.refill_event_id
-        )
+        if use_calendar:
+            if medication.calendar_event_ids:
+                calendar_service.delete_events(user, medication.calendar_event_ids)
+            medication.calendar_event_ids = calendar_service.create_dose_events(user, medication)
+            medication.refill_event_id = calendar_service.create_or_update_refill_event(
+                user, medication, existing_event_id=medication.refill_event_id
+            )
 
     prescription.status = "scheduled"
     db.commit()
@@ -117,11 +123,12 @@ def schedule_prescription(
 @router.delete("/{prescription_id}")
 def delete_prescription(prescription_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     prescription = _get_owned_prescription(prescription_id, user, db)
-    for medication in prescription.medications:
-        if medication.calendar_event_ids:
-            calendar_service.delete_events(user, medication.calendar_event_ids)
-        if medication.refill_event_id:
-            calendar_service.delete_events(user, [medication.refill_event_id])
+    if user.auth_provider == "google":
+        for medication in prescription.medications:
+            if medication.calendar_event_ids:
+                calendar_service.delete_events(user, medication.calendar_event_ids)
+            if medication.refill_event_id:
+                calendar_service.delete_events(user, [medication.refill_event_id])
     db.delete(prescription)
     db.commit()
     return {"ok": True}

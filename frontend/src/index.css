@@ -35,7 +35,7 @@ label {
   color: #555;
   margin-bottom: 10px;
 }
-input[type="text"], input[type="number"], input[type="datetime-local"], input:not([type]) {
+input[type="text"], input[type="number"], input[type="datetime-local"], input[type="password"], input:not([type]) {
   display: block;
   width: 100%;
   padding: 8px;
@@ -73,3 +73,30 @@ input[type="text"], input[type="number"], input[type="datetime-local"], input:no
   margin-bottom: 16px;
 }
 .low-stock { color: #dc2626; font-weight: 600; }
+
+.hint { font-size: 13px; color: #666; margin: 4px 0 12px; }
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #999;
+  font-size: 13px;
+  margin: 20px 0;
+}
+.divider::before, .divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: #ddd;
+}
+.link-button {
+  display: block;
+  background: none;
+  border: none;
+  color: #2563eb;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 6px 0;
+  text-decoration: underline;
+}
+.topbar .link-button { color: white; opacity: 0.85; }

@@ -28,8 +28,22 @@ class Settings(BaseSettings):
     # days before a medication runs out that a refill reminder is created
     refill_reminder_days_before: int = 4
 
+    # Web Push (VAPID) - identifies this server to push services (FCM etc.)
+    # so browsers trust the notifications. \n in the PEM value from a .env
+    # file is a literal backslash-n; turn it back into real newlines.
+    vapid_public_key: str = ""
+    vapid_private_key_pem: str = ""
+    vapid_subject: str = "mailto:admin@example.com"
+
+    # how often the push-reminder scheduler checks for due doses
+    push_scheduler_interval_seconds: int = 60
+
     class Config:
         env_file = ".env"
+
+    @property
+    def vapid_private_key(self) -> str:
+        return self.vapid_private_key_pem.replace("\\n", "\n")
 
 
 settings = Settings()

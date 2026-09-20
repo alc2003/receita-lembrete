@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import RedirectResponse
 from googleapiclient.discovery import build
 from sqlalchemy.orm import Session
@@ -7,7 +7,9 @@ from app.auth import create_session_token, get_current_user
 from app.config import settings
 from app.database import get_db
 from app.models import User
+from app.schemas import LoginRequest, RegisterRequest
 from app.services.calendar_service import build_auth_flow, SCOPES
+from app.services.password_service import hash_password, verify_password
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -45,7 +47,7 @@ def google_callback(code: str, db: Session = Depends(get_db)):
 
     user = db.query(User).filter(User.google_id == info["id"]).first()
     if user is None:
-        user = User(google_id=info["id"], email=info["email"], name=info.get("name"))
+        user = User(google_id=info["id"], email=info["email"], name=info.get("name"), auth_provider="google")
         db.add(user)
 
     user.email = info["email"]
@@ -59,6 +61,39 @@ def google_callback(code: str, db: Session = Depends(get_db)):
     return RedirectResponse(f"{settings.frontend_origin}/auth/callback?token={session_token}")
 
 
+@router.post("/register")
+def register(payload: RegisterRequest, db: Session = Depends(get_db)):
+    if db.query(User).filter(User.username == payload.username).first():
+        raise HTTPException(400, "Nome de usuário já existe")
+
+    user = User(
+        username=payload.username,
+        name=payload.name or payload.username,
+        auth_provider="local",
+        password_hash=hash_password(payload.password),
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+
+    return {"token": create_session_token(user)}
+
+
+@router.post("/login")
+def login(payload: LoginRequest, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.username == payload.username, User.auth_provider == "local").first()
+    if user is None or not user.password_hash or not verify_password(payload.password, user.password_hash):
+        raise HTTPException(401, "Usuário ou senha inválidos")
+
+    return {"token": create_session_token(user)}
+
+
 @router.get("/me")
 def me(user: User = Depends(get_current_user)):
-    return {"id": user.id, "email": user.email, "name": user.name}
+    return {
+        "id": user.id,
+        "email": user.email,
+        "username": user.username,
+        "name": user.name,
+        "auth_provider": user.auth_provider,
+    }
