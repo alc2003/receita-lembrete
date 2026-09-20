@@ -52,8 +52,14 @@ export const api = {
     }).then(handle);
   },
 
+  listPrescriptions: () =>
+    fetch(`${API_URL}/prescriptions`, { headers: authHeaders() }).then(handle),
+
   getPrescription: (id) =>
     fetch(`${API_URL}/prescriptions/${id}`, { headers: authHeaders() }).then(handle),
+
+  deletePrescription: (id) =>
+    fetch(`${API_URL}/prescriptions/${id}`, { method: "DELETE", headers: authHeaders() }).then(handle),
 
   updateMedication: (prescriptionId, medicationId, payload) =>
     fetch(`${API_URL}/prescriptions/${prescriptionId}/medications/${medicationId}`, {

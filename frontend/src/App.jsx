@@ -6,6 +6,7 @@ import Upload from "./pages/Upload.jsx";
 import Review from "./pages/Review.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 import CalendarPage from "./pages/Calendar.jsx";
+import Prescriptions from "./pages/Prescriptions.jsx";
 import { api } from "./api/client.js";
 import { enablePushNotifications } from "./push.js";
 
@@ -53,6 +54,7 @@ export default function App() {
         <Link to="/" className="brand">💊 Receita Lembrete</Link>
         <nav>
           <Link to="/calendar">📅 Agenda</Link>
+          <Link to="/prescriptions">📄 Receitas</Link>
           <Link to="/upload">Nova receita</Link>
           <span className="user">{user.name || user.username || user.email}</span>
           <button className="link-button" onClick={logout}>Sair</button>
@@ -62,6 +64,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/calendar" element={<CalendarPage />} />
+          <Route path="/prescriptions" element={<Prescriptions />} />
           <Route path="/upload" element={<Upload />} />
           <Route path="/prescriptions/:id/review" element={<Review />} />
           <Route path="*" element={<Navigate to="/" />} />
