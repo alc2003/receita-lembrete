@@ -49,6 +49,8 @@ def take_dose(
     medication = _get_owned_medication(medication_id, user, db)
 
     taken_at = payload.taken_at or dt.datetime.utcnow()
+    if taken_at.tzinfo is not None:
+        taken_at = taken_at.astimezone(dt.timezone.utc).replace(tzinfo=None)
     db.add(DoseLog(medication_id=medication.id, taken_at=taken_at))
 
     if medication.quantity_remaining is not None and medication.quantity_remaining > 0:

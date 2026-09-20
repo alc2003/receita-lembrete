@@ -7,6 +7,7 @@ when the medication is continuous or stock-limited, one additional single
 event warning the user before the box runs out.
 """
 import datetime as dt
+from zoneinfo import ZoneInfo
 
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import Flow
@@ -18,6 +19,8 @@ from app.services import schedule_service
 
 SCOPES = ["https://www.googleapis.com/auth/calendar.events", "openid",
           "https://www.googleapis.com/auth/userinfo.email"]
+
+BRAZIL_TZ = ZoneInfo("America/Sao_Paulo")
 
 
 def build_auth_flow(state: str | None = None) -> Flow:
@@ -59,11 +62,16 @@ def _rrule_until(end_date: dt.date) -> str:
 
 def create_dose_events(user: User, medication: Medication) -> list[str]:
     service = _calendar(user)
+    # medication.first_dose_at is naive UTC; Calendar events are tagged with
+    # timeZone="America/Sao_Paulo" below, so the wall-clock time we hand it
+    # must already be in that zone - otherwise the event lands at the UTC
+    # clock reading mislabeled as if it were already Brazil time.
+    first_dose_local = medication.first_dose_at.replace(tzinfo=dt.timezone.utc).astimezone(BRAZIL_TZ)
     times = schedule_service.dose_times_of_day(
-        medication.first_dose_at, medication.frequency_hours, medication.times_per_day
+        first_dose_local, medication.frequency_hours, medication.times_per_day
     )
     event_ids: list[str] = []
-    first_day = medication.first_dose_at.date()
+    first_day = first_dose_local.date()
 
     for slot_time in times:
         start_dt = dt.datetime.combine(first_day, slot_time)

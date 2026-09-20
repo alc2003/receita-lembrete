@@ -85,9 +85,16 @@ class Medication(Base):
     total_quantity = Column(Integer, nullable=True)  # units in the box/prescription (e.g. 30 comprimidos)
     quantity_remaining = Column(Integer, nullable=True)
 
-    # Timezone-aware so the push scheduler can compare against utcnow()
-    # without ambiguity, regardless of which DB backend stores it.
-    first_dose_at = Column(DateTime(timezone=True), nullable=True)
+    # Naive, but always UTC by convention (like every other datetime column
+    # here) - deliberately NOT timezone=True. The `medications` table
+    # predates that option, so its underlying Postgres column is already
+    # TIMESTAMP WITHOUT TIME ZONE; declaring timezone=True here without a
+    # matching column migration silently corrupted stored times (Postgres
+    # converts an incoming tz-aware value into the session's timezone and
+    # drops the offset when the target column has none). Every read/write
+    # path converts explicitly to naive UTC instead, so the app never has
+    # to depend on the DB session's timezone setting.
+    first_dose_at = Column(DateTime, nullable=True)
     end_date = Column(Date, nullable=True)  # computed: last day the medication is taken / stock lasts
 
     calendar_event_ids = Column(JSON, default=list)  # one recurring event id per time-of-day slot (Google flow)
@@ -95,8 +102,9 @@ class Medication(Base):
 
     # Bookkeeping for the push-notification flow (auth_provider == "local"):
     # which dose slot instant was last notified, so the scheduler tick
-    # doesn't send the same reminder twice.
-    last_reminder_sent_at = Column(DateTime(timezone=True), nullable=True)
+    # doesn't send the same reminder twice. Naive UTC, same reasoning as
+    # first_dose_at above.
+    last_reminder_sent_at = Column(DateTime, nullable=True)
     refill_notified = Column(Boolean, default=False)
 
     created_at = Column(DateTime, default=dt.datetime.utcnow)

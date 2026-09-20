@@ -27,6 +27,10 @@ def days_supply(medication: Medication) -> int | None:
 def compute_schedule(medication: Medication, first_dose_at: dt.datetime) -> None:
     """Fills in first_dose_at, end_date and quantity_remaining on the medication
     (caller is responsible for committing to the DB)."""
+    if first_dose_at.tzinfo is not None:
+        # normalize to naive UTC before it ever touches the DB - see the
+        # comment on Medication.first_dose_at for why this matters
+        first_dose_at = first_dose_at.astimezone(dt.timezone.utc).replace(tzinfo=None)
     medication.first_dose_at = first_dose_at
     medication.quantity_remaining = medication.total_quantity
 

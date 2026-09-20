@@ -57,7 +57,7 @@ def _notify_user(db: Session, user: User, title: str, body: str) -> None:
 
 
 def _tick(db: Session) -> None:
-    now = dt.datetime.now(dt.timezone.utc)
+    now = dt.datetime.utcnow()  # naive, matching the naive-UTC columns it's compared against
 
     for medication in _due_medications(db):
         slot = _current_dose_slot(medication, now)

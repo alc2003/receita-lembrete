@@ -1,7 +1,23 @@
 import datetime as dt
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_serializer
+
+
+def _utc_iso(value: Optional[dt.datetime]) -> Optional[str]:
+    """Every datetime this API stores is UTC, but some DB columns hold that
+    as a naive value (no tzinfo). Serializing a naive datetime as plain
+    ISO ("...T21:30:00") is what caused the timezone bug: JavaScript's
+    `new Date(...)` treats a timezone-less string as LOCAL time, not UTC,
+    so the browser silently re-interpreted the UTC clock reading as if it
+    were already local time. Always emit an explicit "Z" so the frontend
+    can never make that mistake, whether the value came back aware or not.
+    """
+    if value is None:
+        return None
+    if value.tzinfo is None:
+        return value.isoformat() + "Z"
+    return value.astimezone(dt.timezone.utc).isoformat().replace("+00:00", "Z")
 
 
 class MedicationExtracted(BaseModel):
@@ -36,6 +52,10 @@ class MedicationOut(BaseModel):
     class Config:
         from_attributes = True
 
+    @field_serializer("first_dose_at")
+    def _serialize_first_dose_at(self, value: Optional[dt.datetime]) -> Optional[str]:
+        return _utc_iso(value)
+
 
 class MedicationUpdate(BaseModel):
     """Fields the user can edit during the review step before scheduling."""
@@ -57,6 +77,10 @@ class PrescriptionOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+    @field_serializer("created_at")
+    def _serialize_created_at(self, value: dt.datetime) -> str:
+        return _utc_iso(value)
 
 
 class ScheduleRequest(BaseModel):

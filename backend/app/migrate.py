@@ -31,8 +31,14 @@ def run_simple_migrations(engine: Engine) -> None:
                 conn.execute(text("ALTER TABLE users ALTER COLUMN email DROP NOT NULL"))
 
         if "medications" in tables:
-            cols = {c["name"] for c in inspector.get_columns("medications")}
-            if "last_reminder_sent_at" not in cols:
-                conn.execute(text("ALTER TABLE medications ADD COLUMN last_reminder_sent_at TIMESTAMPTZ"))
-            if "refill_notified" not in cols:
+            med_cols = {c["name"]: c for c in inspector.get_columns("medications")}
+            if "last_reminder_sent_at" not in med_cols:
+                conn.execute(text("ALTER TABLE medications ADD COLUMN last_reminder_sent_at TIMESTAMP"))
+            elif is_postgres and getattr(med_cols["last_reminder_sent_at"]["type"], "timezone", False):
+                # an earlier version of this migration created the column as
+                # TIMESTAMPTZ; the model now stores naive UTC everywhere
+                # (see the comment on Medication.first_dose_at for why), so
+                # align the column type to match
+                conn.execute(text("ALTER TABLE medications ALTER COLUMN last_reminder_sent_at TYPE TIMESTAMP"))
+            if "refill_notified" not in med_cols:
                 conn.execute(text("ALTER TABLE medications ADD COLUMN refill_notified BOOLEAN DEFAULT FALSE"))
