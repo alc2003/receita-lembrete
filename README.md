@@ -88,31 +88,86 @@ npm run dev
 Abre em `http://localhost:5173`. Faça login com Google, autorize o acesso
 ao Calendar, envie uma foto de receita e confirme os horários.
 
-## 3. Deploy gratuito (para testes)
+## 3. Deploy gratuito (para outros usuários testarem)
 
 | Peça | Onde | Por quê |
 |---|---|---|
-| Backend (FastAPI) | [Render.com](https://render.com) — Web Service free | Free tier roda um app Python direto do GitHub |
-| Banco de dados | [Neon.tech](https://neon.tech) — Postgres free | Render free não garante disco persistente; Neon dá Postgres gratuito |
-| Frontend (React) | [Vercel](https://vercel.com) ou [Netlify](https://netlify.com) free | Hospedagem estática gratuita com HTTPS |
+| Código | [GitHub](https://github.com) — repositório free | Render e Vercel puxam o deploy direto de lá |
+| Backend (FastAPI) | [Render.com](https://render.com) — Web Service free | Roda o `render.yaml` deste projeto direto do GitHub |
+| Banco de dados | [Neon.tech](https://neon.tech) — Postgres free | Render free não tem disco persistente; Neon dá Postgres gratuito |
+| Frontend (React) | [Vercel](https://vercel.com) free | Hospedagem estática gratuita com HTTPS |
 
-Passos:
+Essas contas (GitHub, Render, Neon, Vercel) só você pode criar — são login/
+cadastro pessoal. Depois de criadas, siga:
 
-1. Suba este projeto para um repositório no GitHub.
-2. **Neon**: crie um banco Postgres gratuito e copie a connection string.
-3. **Render**: crie um "Web Service" apontando para `backend/`, comando de
-   start `uvicorn app.main:app --host 0.0.0.0 --port $PORT`. Configure as
-   variáveis de ambiente (as mesmas do `.env`, com `DATABASE_URL` apontando
-   para o Neon e `FRONTEND_ORIGIN`/`GOOGLE_REDIRECT_URI` para as URLs reais).
-4. **Vercel/Netlify**: aponte para `frontend/`, build command `npm run
-   build`, publish directory `dist`. Configure `VITE_API_URL` para a URL do
-   Render.
-5. Volte no Google Cloud Console e adicione a URL de callback real
-   (`https://SEU-BACKEND.onrender.com/auth/google/callback`) nos URIs de
-   redirecionamento autorizados.
+### 3.1. Suba o código para o GitHub
 
-O free tier do Render "dorme" depois de alguns minutos sem uso — a primeira
-requisição depois disso demora ~30s para acordar. Aceitável para testes.
+Em https://github.com/new crie um repositório (pode ser privado). Depois:
+
+```bash
+git remote add origin https://github.com/SEU-USUARIO/receita-lembrete.git
+git branch -M main
+git push -u origin main
+```
+
+### 3.2. Banco de dados (Neon)
+
+1. Crie uma conta em https://neon.tech e um projeto novo.
+2. No painel do projeto, copie a **Connection string** (algo como
+   `postgresql://usuario:senha@ep-xxx.neon.tech/neondb?sslmode=require`).
+   Guarde — vai usar no Render como `DATABASE_URL`.
+
+### 3.3. Backend (Render)
+
+1. Em https://dashboard.render.com/blueprints clique em **New Blueprint
+   Instance** e conecte o repositório do GitHub que você acabou de criar.
+   O Render lê o `render.yaml` da raiz do projeto automaticamente e já
+   configura o serviço (nome, build, start command, plano free).
+2. Ele vai pedir para preencher as variáveis marcadas `sync: false`:
+   - `DATABASE_URL`: a connection string do Neon (passo 3.2)
+   - `ANTHROPIC_API_KEY`: a mesma chave do seu `.env` local
+   - `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`: os mesmos do `.env` local
+     (ou crie um novo Client ID de produção — seção 1)
+   - `GOOGLE_REDIRECT_URI`: `https://SEU-BACKEND.onrender.com/auth/google/callback`
+     (troque `SEU-BACKEND` pelo nome que o Render gerar — você vê isso após
+     criar o serviço, na URL exibida no topo da página)
+   - `FRONTEND_ORIGIN`: preencha depois de criar o Vercel (passo 3.4) e
+     redeploy
+   - `SECRET_KEY` já é gerado automaticamente pelo Render
+3. Deploy. Teste `https://SEU-BACKEND.onrender.com/health` — deve responder
+   `{"status":"ok"}`.
+
+### 3.4. Frontend (Vercel)
+
+1. Em https://vercel.com/new importe o mesmo repositório do GitHub.
+2. Em "Root Directory" selecione `frontend`.
+3. Framework preset: Vite (o Vercel detecta sozinho).
+4. Em "Environment Variables" adicione `VITE_API_URL` =
+   `https://SEU-BACKEND.onrender.com` (URL do Render, sem barra no final).
+5. Deploy. Você recebe uma URL tipo `https://receita-lembrete.vercel.app`.
+6. Volte no Render e atualize `FRONTEND_ORIGIN` para essa URL do Vercel,
+   depois clique em "Manual Deploy" para reiniciar o backend com o valor
+   novo (é o que libera o CORS para o frontend em produção).
+
+### 3.5. Atualize o Google Cloud Console
+
+No mesmo projeto usado nos passos 1-7 da seção 1:
+
+1. **Público-alvo** → adicione o e-mail de quem for testar como "Usuário de
+   teste" (enquanto o app não é publicado/verificado, só esses e-mails
+   conseguem logar).
+2. **Clientes** → edite o Client ID (ou crie um novo para produção) →
+   em **URIs de redirecionamento autorizados** adicione:
+   ```
+   https://SEU-BACKEND.onrender.com/auth/google/callback
+   ```
+   (mantenha também o `http://localhost:8000/...` se ainda for testar local)
+
+### Limitação do free tier
+
+O Render free "dorme" depois de ~15 minutos sem uso — a primeira requisição
+depois disso demora ~30-50s para acordar (normal, não é erro). Aceitável
+para testes; para uso real considere um plano pago para não dormir.
 
 ## 4. Gerando o app Android (mesmo código do site)
 
