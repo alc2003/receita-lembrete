@@ -52,6 +52,39 @@ async def upload_prescription(
     return prescription
 
 
+@router.post("/manual", response_model=PrescriptionOut)
+def create_manual_prescription(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Starts a prescription with no photo and no AI extraction, for when
+    the user wants to type in the medication info themselves."""
+    prescription = Prescription(
+        user_id=user.id,
+        original_filename=None,
+        raw_extraction={"medications": [], "warnings": []},
+        status="uploaded",
+    )
+    db.add(prescription)
+    db.commit()
+    db.refresh(prescription)
+    return prescription
+
+
+@router.post("/{prescription_id}/medications", response_model=MedicationOut)
+def add_medication(prescription_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Adds one blank medication row to a prescription still being edited -
+    used by the manual-entry flow and to add an extra item during review."""
+    prescription = _get_owned_prescription(prescription_id, user, db)
+    medication = Medication(
+        prescription_id=prescription.id,
+        name="",
+        frequency_hours=8,
+        times_per_day=1,
+    )
+    db.add(medication)
+    db.commit()
+    db.refresh(medication)
+    return medication
+
+
 @router.get("", response_model=list[PrescriptionOut])
 def list_prescriptions(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     return db.query(Prescription).filter(Prescription.user_id == user.id).order_by(Prescription.created_at.desc()).all()

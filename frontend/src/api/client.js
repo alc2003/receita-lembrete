@@ -52,6 +52,15 @@ export const api = {
     }).then(handle);
   },
 
+  createManualPrescription: () =>
+    fetch(`${API_URL}/prescriptions/manual`, { method: "POST", headers: authHeaders() }).then(handle),
+
+  addMedication: (prescriptionId) =>
+    fetch(`${API_URL}/prescriptions/${prescriptionId}/medications`, {
+      method: "POST",
+      headers: authHeaders(),
+    }).then(handle),
+
   listPrescriptions: () =>
     fetch(`${API_URL}/prescriptions`, { headers: authHeaders() }).then(handle),
 

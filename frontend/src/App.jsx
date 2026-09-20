@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Routes, Route, Navigate, Link } from "react-router-dom";
+import { Routes, Route, Navigate, Link, useLocation } from "react-router-dom";
 import Login from "./pages/Login.jsx";
 import AuthCallback from "./pages/AuthCallback.jsx";
 import Upload from "./pages/Upload.jsx";
@@ -12,6 +12,30 @@ import { api } from "./api/client.js";
 import { enablePushNotifications } from "./push.js";
 import { useTimezone } from "./TimezoneContext.jsx";
 import { BR_TIMEZONES } from "./timezone.js";
+
+const TABS = [
+  { to: "/", icon: "💊", label: "Início" },
+  { to: "/calendar", icon: "📅", label: "Agenda" },
+  { to: "/upload", icon: "➕", label: "Nova" },
+  { to: "/prescriptions", icon: "📄", label: "Receitas" },
+];
+
+function BottomNav() {
+  const location = useLocation();
+  return (
+    <nav className="bottom-nav">
+      {TABS.map((tab) => {
+        const active = tab.to === "/" ? location.pathname === "/" : location.pathname.startsWith(tab.to);
+        return (
+          <Link key={tab.to} to={tab.to} className={`bottom-nav-item ${active ? "active" : ""}`}>
+            <span className="bottom-nav-icon">{tab.icon}</span>
+            <span className="bottom-nav-label">{tab.label}</span>
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}
 
 export default function App() {
   const [user, setUser] = useState(undefined); // undefined = loading, null = logged out
@@ -41,7 +65,13 @@ export default function App() {
     setUser(null);
   }
 
-  if (user === undefined) return <div className="page">Carregando...</div>;
+  if (user === undefined) {
+    return (
+      <div className="page center">
+        <div className="spinner" />
+      </div>
+    );
+  }
 
   if (!user) {
     return (
@@ -53,13 +83,10 @@ export default function App() {
   }
 
   return (
-    <div>
+    <div className="app-shell">
       <header className="topbar">
         <Link to="/" className="brand">💊 Receita Lembrete</Link>
-        <nav>
-          <Link to="/calendar">📅 Agenda</Link>
-          <Link to="/prescriptions">📄 Receitas</Link>
-          <Link to="/upload">Nova receita</Link>
+        <div className="topbar-actions">
           <select
             className="tz-select"
             value={offset}
@@ -72,7 +99,7 @@ export default function App() {
           </select>
           <span className="user">{user.name || user.username || user.email}</span>
           <button className="link-button" onClick={logout}>Sair</button>
-        </nav>
+        </div>
       </header>
       <main className="page">
         <Routes>
@@ -85,6 +112,7 @@ export default function App() {
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </main>
+      <BottomNav />
     </div>
   );
 }
