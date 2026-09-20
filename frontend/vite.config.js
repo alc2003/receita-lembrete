@@ -7,6 +7,20 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: "autoUpdate",
+      workbox: {
+        // the HTML shell must always be revalidated against the network -
+        // otherwise an installed PWA can keep serving a stale build (old
+        // JS/CSS) indefinitely, since cache-first would never notice a
+        // new deploy exists until something else forces a refetch.
+        navigateFallback: "index.html",
+        runtimeCaching: [
+          {
+            urlPattern: ({ request }) => request.mode === "navigate",
+            handler: "NetworkFirst",
+            options: { cacheName: "html-cache" },
+          },
+        ],
+      },
       manifest: {
         name: "Receita Lembrete",
         short_name: "Receitas",

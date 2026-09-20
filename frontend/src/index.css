@@ -100,3 +100,18 @@ input[type="text"], input[type="number"], input[type="datetime-local"], input[ty
   text-decoration: underline;
 }
 .topbar .link-button { color: white; opacity: 0.85; }
+
+.password-field { position: relative; }
+.password-field input { padding-right: 40px; }
+.eye-button {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 6px;
+  line-height: 1;
+}
