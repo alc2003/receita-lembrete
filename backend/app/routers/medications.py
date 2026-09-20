@@ -67,3 +67,32 @@ def take_dose(
     db.commit()
     db.refresh(medication)
     return medication
+
+
+@router.delete("/{medication_id}")
+def delete_medication(medication_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Stops reminding about this medication. For Google accounts this also
+    cancels the Calendar event series; for local accounts there's nothing
+    else to cancel - the push scheduler only fires for rows that still
+    exist, so deleting the row is enough to stop future notifications."""
+    medication = _get_owned_medication(medication_id, user, db)
+
+    if user.auth_provider == "google":
+        if medication.calendar_event_ids:
+            calendar_service.delete_events(user, medication.calendar_event_ids)
+        if medication.refill_event_id:
+            calendar_service.delete_events(user, [medication.refill_event_id])
+
+    prescription_id = medication.prescription_id
+    db.delete(medication)
+    db.flush()
+    # an empty prescription (all its medications removed) has nothing left
+    # to show anywhere, so clean it up too - query fresh rather than trust
+    # the in-memory relationship, which isn't guaranteed to reflect the
+    # delete we just flushed
+    remaining = db.query(Medication).filter(Medication.prescription_id == prescription_id).count()
+    if remaining == 0:
+        db.query(Prescription).filter(Prescription.id == prescription_id).delete()
+
+    db.commit()
+    return {"ok": True}

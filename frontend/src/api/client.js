@@ -78,4 +78,10 @@ export const api = {
       headers: { "Content-Type": "application/json", ...authHeaders() },
       body: JSON.stringify({}),
     }).then(handle),
+
+  deleteMedication: (medicationId) =>
+    fetch(`${API_URL}/medications/${medicationId}`, {
+      method: "DELETE",
+      headers: authHeaders(),
+    }).then(handle),
 };

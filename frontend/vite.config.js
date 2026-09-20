@@ -36,5 +36,12 @@ export default defineConfig({
       },
     }),
   ],
-  server: { port: 5173 },
+  server: {
+    port: 5173,
+    // Docker Desktop's bind mount on Windows doesn't reliably forward
+    // inotify events into the container, so Vite's watcher can silently
+    // miss host-side edits. Polling is slightly heavier but never misses
+    // a change. Dev-only - doesn't affect the production build.
+    watch: { usePolling: true, interval: 300 },
+  },
 });
