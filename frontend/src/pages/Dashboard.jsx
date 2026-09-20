@@ -1,26 +1,12 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api/client.js";
+import { doseTimesInRange } from "../scheduleUtils.js";
 
 function upcomingDoses(med, count = 3) {
-  if (!med.first_dose_at) return [];
-
-  const first = new Date(med.first_dose_at);
-  const periodMs = med.frequency_hours * 3600 * 1000;
-  const endLimit = med.end_date ? new Date(`${med.end_date}T23:59:59`) : null;
   const now = new Date();
-
-  const elapsed = now - first;
-  let slot = elapsed < 0 ? first : new Date(first.getTime() + Math.floor(elapsed / periodMs) * periodMs);
-  if (slot < now) slot = new Date(slot.getTime() + periodMs);
-
-  const slots = [];
-  while (slots.length < count) {
-    if (endLimit && slot > endLimit) break;
-    slots.push(slot);
-    slot = new Date(slot.getTime() + periodMs);
-  }
-  return slots;
+  const farFuture = new Date(now.getTime() + 90 * 24 * 3600 * 1000);
+  return doseTimesInRange(med, now, farFuture).slice(0, count);
 }
 
 function formatDose(date) {
