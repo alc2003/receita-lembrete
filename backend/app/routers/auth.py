@@ -63,12 +63,13 @@ def google_callback(code: str, db: Session = Depends(get_db)):
 
 @router.post("/register")
 def register(payload: RegisterRequest, db: Session = Depends(get_db)):
-    if db.query(User).filter(User.username == payload.username).first():
+    username = payload.username.strip().lower()
+    if db.query(User).filter(User.username == username).first():
         raise HTTPException(400, "Nome de usuário já existe")
 
     user = User(
-        username=payload.username,
-        name=payload.name or payload.username,
+        username=username,
+        name=payload.name or username,
         auth_provider="local",
         password_hash=hash_password(payload.password),
     )
@@ -81,7 +82,8 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)):
 
 @router.post("/login")
 def login(payload: LoginRequest, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.username == payload.username, User.auth_provider == "local").first()
+    username = payload.username.strip().lower()
+    user = db.query(User).filter(User.username == username, User.auth_provider == "local").first()
     if user is None or not user.password_hash or not verify_password(payload.password, user.password_hash):
         raise HTTPException(401, "Usuário ou senha inválidos")
 

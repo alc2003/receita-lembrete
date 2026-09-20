@@ -47,7 +47,14 @@ export default function Login({ onLogin }) {
 
         <label>
           Usuário
-          <input value={username} onChange={(e) => setUsername(e.target.value)} required />
+          <input
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck="false"
+            required
+          />
         </label>
 
         {mode === "register" && (
